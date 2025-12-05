@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片分割工具 - 免费在线切图神器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖼️ 图片分割工具</h1>
+            <p class="subtitle">轻松将图片分割成多个部分，支持横向、竖向和网格分割</p>
+        </header>
+
+        <main>
+            <!-- 上传区域 -->
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <h3>拖拽图片到此处</h3>
+                    <p>或点击选择文件</p>
+                    <p class="upload-hint">支持 JPG、PNG、WebP 格式，最大 50MB</p>
+                    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" hidden>
+                </div>
+            </div>
+
+            <!-- 编辑区域 -->
+            <div class="editor-section" id="editorSection" style="display: none;">
+                <div class="editor-layout">
+                    <!-- 预览区域 -->
+                    <div class="preview-panel">
+                        <div class="panel-header">
+                            <span class="panel-icon">👁️</span>
+                            <span>预览</span>
+                        </div>
+                        <div class="preview-container">
+                            <canvas id="previewCanvas"></canvas>
+                        </div>
+                        <div class="image-info">
+                            <div class="info-item">
+                                <span class="info-label">原始尺寸:</span>
+                                <span class="info-value" id="originalSize">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">文件大小:</span>
+                                <span class="info-value" id="fileSize">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">分割模式:</span>
+                                <span class="info-value" id="splitModeInfo">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">分割数量:</span>
+                                <span class="info-value" id="splitCount">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 选项面板 -->
+                    <div class="options-panel">
+                        <div class="panel-header">
+                            <span class="panel-icon">⚙️</span>
+                            <span>分割选项</span>
+                        </div>
+
+                        <!-- 分割模式 -->
+                        <div class="option-group">
+                            <label class="option-label">分割模式</label>
+                            <div class="mode-selector">
+                                <div class="mode-option" data-mode="horizontal">
+                                    <div class="mode-icon">
+                                        <svg viewBox="0 0 40 40" width="32" height="32">
+                                            <rect x="2" y="2" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="14" x2="38" y2="14" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="26" x2="38" y2="26" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                    <span>横向分割</span>
+                                </div>
+                                <div class="mode-option" data-mode="vertical">
+                                    <div class="mode-icon">
+                                        <svg viewBox="0 0 40 40" width="32" height="32">
+                                            <rect x="2" y="2" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="14" y1="2" x2="14" y2="38" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="26" y1="2" x2="26" y2="38" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                    <span>竖向分割</span>
+                                </div>
+                                <div class="mode-option active" data-mode="grid">
+                                    <div class="mode-icon">
+                                        <svg viewBox="0 0 40 40" width="32" height="32">
+                                            <rect x="2" y="2" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="14" y1="2" x2="14" y2="38" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="26" y1="2" x2="26" y2="38" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="14" x2="38" y2="14" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="26" x2="38" y2="26" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                    </div>
+                                    <span>网格分割</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 分割参数 -->
+                        <div class="option-group">
+                            <label class="option-label">分割参数</label>
+                            
+                            <div class="slider-group" id="colsGroup">
+                                <div class="slider-header">
+                                    <span>横向分割份数</span>
+                                    <span class="slider-value" id="colsValue">3</span>
+                                </div>
+                                <input type="range" id="colsSlider" min="1" max="10" value="3" class="slider">
+                            </div>
+                            
+                            <div class="slider-group" id="rowsGroup">
+                                <div class="slider-header">
+                                    <span>竖向分割份数</span>
+                                    <span class="slider-value" id="rowsValue">3</span>
+                                </div>
+                                <input type="range" id="rowsSlider" min="1" max="10" value="3" class="slider">
+                            </div>
+
+                            <div class="split-preview-text">
+                                <span>这将创建 </span>
+                                <strong id="totalParts">9</strong>
+                                <span> 个部分</span>
+                            </div>
+                        </div>
+
+                        <!-- 边框设置 -->
+                        <div class="option-group">
+                            <label class="option-label">边框设置</label>
+                            <div class="toggle-group">
+                                <span>添加边框</span>
+                                <label class="toggle">
+                                    <input type="checkbox" id="borderToggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="border-options" id="borderOptions" style="display: none;">
+                                <div class="color-picker-group">
+                                    <span>边框颜色</span>
+                                    <input type="color" id="borderColor" value="#ffffff">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>边框宽度</span>
+                                        <span class="slider-value" id="borderWidthValue">2px</span>
+                                    </div>
+                                    <input type="range" id="borderWidth" min="1" max="20" value="2" class="slider">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 输出设置 -->
+                        <div class="option-group">
+                            <label class="option-label">输出设置</label>
+                            <div class="output-format">
+                                <span>输出格式</span>
+                                <select id="outputFormat">
+                                    <option value="png">PNG</option>
+                                    <option value="jpeg">JPEG</option>
+                                    <option value="webp">WebP</option>
+                                </select>
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <span>图片质量</span>
+                                    <span class="slider-value" id="qualityValue">100%</span>
+                                </div>
+                                <input type="range" id="qualitySlider" min="10" max="100" value="100" class="slider">
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary" id="resetBtn">
+                                <span>🔄</span> 重新选择
+                            </button>
+                            <button class="btn btn-primary" id="splitBtn">
+                                <span>✂️</span> 分割图片
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结果区域 -->
+            <div class="result-section" id="resultSection" style="display: none;">
+                <div class="panel-header">
+                    <span class="panel-icon">✅</span>
+                    <span>分割结果</span>
+                </div>
+                <div class="result-grid" id="resultGrid"></div>
+                <div class="result-actions">
+                    <button class="btn btn-secondary" id="backToEditBtn">
+                        <span>←</span> 返回编辑
+                    </button>
+                    <button class="btn btn-primary" id="downloadAllBtn">
+                        <span>📥</span> 下载全部 (ZIP)
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>图片分割工具 - 所有处理均在本地完成，保障隐私安全</p>
+        </footer>
+    </div>
+
+    <!-- 加载提示 -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>正在处理中...</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
