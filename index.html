@@ -130,6 +130,49 @@
                             </div>
                         </div>
 
+                        <!-- 去边设置 -->
+                        <div class="option-group">
+                            <label class="option-label">图片处理</label>
+                            <div class="toggle-group">
+                                <span>自动去除边缘</span>
+                                <label class="toggle">
+                                    <input type="checkbox" id="trimToggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="trim-options" id="trimOptions" style="display: none;">
+                                <div class="trim-mode-group">
+                                    <span class="trim-mode-label">边缘类型</span>
+                                    <div class="trim-mode-selector">
+                                        <label class="trim-mode-option">
+                                            <input type="radio" name="trimMode" value="black" checked>
+                                            <span class="trim-mode-btn">⬛ 黑边</span>
+                                        </label>
+                                        <label class="trim-mode-option">
+                                            <input type="radio" name="trimMode" value="white">
+                                            <span class="trim-mode-btn">⬜ 白边</span>
+                                        </label>
+                                        <label class="trim-mode-option">
+                                            <input type="radio" name="trimMode" value="custom">
+                                            <span class="trim-mode-btn">🎨 自定义</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="custom-color-group" id="customColorGroup" style="display: none;">
+                                    <span>边缘颜色</span>
+                                    <input type="color" id="trimColor" value="#000000">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>检测阈值</span>
+                                        <span class="slider-value" id="trimThresholdValue">30</span>
+                                    </div>
+                                    <input type="range" id="trimThreshold" min="0" max="100" value="30" class="slider">
+                                </div>
+                                <p class="option-hint">阈值越高，去除的边缘颜色范围越大（容差更大）</p>
+                            </div>
+                        </div>
+
                         <!-- 边框设置 -->
                         <div class="option-group">
                             <label class="option-label">边框设置</label>

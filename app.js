@@ -3,6 +3,7 @@ class ImageSplitter {
     constructor() {
         this.image = null;
         this.imageFile = null;
+        this.processedImage = null; // 处理后的图片（去边后）
         this.splitMode = 'grid'; // horizontal, vertical, grid
         this.cols = 3;
         this.rows = 3;
@@ -12,6 +13,10 @@ class ImageSplitter {
         this.outputFormat = 'png';
         this.quality = 100;
         this.splitImages = [];
+        this.trimEnabled = false;
+        this.trimThreshold = 30;
+        this.trimMode = 'black'; // black, white, custom
+        this.trimColor = '#000000';
 
         this.initElements();
         this.initEventListeners();
@@ -48,6 +53,15 @@ class ImageSplitter {
         this.colsGroup = document.getElementById('colsGroup');
         this.rowsGroup = document.getElementById('rowsGroup');
         this.totalParts = document.getElementById('totalParts');
+        
+        // 去边设置
+        this.trimToggle = document.getElementById('trimToggle');
+        this.trimOptions = document.getElementById('trimOptions');
+        this.trimThresholdSlider = document.getElementById('trimThreshold');
+        this.trimThresholdValue = document.getElementById('trimThresholdValue');
+        this.trimModeRadios = document.querySelectorAll('input[name="trimMode"]');
+        this.customColorGroup = document.getElementById('customColorGroup');
+        this.trimColorInput = document.getElementById('trimColor');
         
         // 边框设置
         this.borderToggle = document.getElementById('borderToggle');
@@ -124,6 +138,40 @@ class ImageSplitter {
             this.updatePreview();
         });
         
+        // 去边设置
+        this.trimToggle.addEventListener('change', (e) => {
+            this.trimEnabled = e.target.checked;
+            this.trimOptions.style.display = this.trimEnabled ? 'block' : 'none';
+            this.processImage();
+        });
+        
+        this.trimThresholdSlider.addEventListener('input', (e) => {
+            this.trimThreshold = parseInt(e.target.value);
+            this.trimThresholdValue.textContent = this.trimThreshold;
+            if (this.trimEnabled) {
+                this.processImage();
+            }
+        });
+        
+        // 边缘类型选择
+        this.trimModeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.trimMode = e.target.value;
+                this.customColorGroup.style.display = this.trimMode === 'custom' ? 'flex' : 'none';
+                if (this.trimEnabled) {
+                    this.processImage();
+                }
+            });
+        });
+        
+        // 自定义颜色选择
+        this.trimColorInput.addEventListener('input', (e) => {
+            this.trimColor = e.target.value;
+            if (this.trimEnabled && this.trimMode === 'custom') {
+                this.processImage();
+            }
+        });
+        
         // 边框设置
         this.borderToggle.addEventListener('change', (e) => {
             this.addBorder = e.target.checked;
@@ -187,9 +235,10 @@ class ImageSplitter {
             const img = new Image();
             img.onload = () => {
                 this.image = img;
+                this.processedImage = img; // 初始化为原图
+                this.trimInfo = null;
                 this.showEditor();
-                this.updatePreview();
-                this.updateImageInfo();
+                this.processImage(); // 处理图片（如果启用了去黑边）
             };
             img.src = e.target.result;
         };
@@ -243,7 +292,13 @@ class ImageSplitter {
     updateImageInfo() {
         if (!this.image) return;
         
-        this.originalSizeEl.textContent = `${this.image.width} × ${this.image.height}px`;
+        const displayImage = this.processedImage || this.image;
+        
+        if (this.trimEnabled && this.trimInfo) {
+            this.originalSizeEl.textContent = `${displayImage.width} × ${displayImage.height}px (原: ${this.image.width} × ${this.image.height})`;
+        } else {
+            this.originalSizeEl.textContent = `${this.image.width} × ${this.image.height}px`;
+        }
         this.fileSizeEl.textContent = this.formatFileSize(this.imageFile.size);
         this.updateSplitModeInfo();
     }
@@ -271,14 +326,180 @@ class ImageSplitter {
         return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
 
+    // 处理图片（去边）
+    processImage() {
+        if (!this.image) return;
+        
+        if (this.trimEnabled) {
+            this.processedImage = this.trimBorders(this.image);
+        } else {
+            this.processedImage = this.image;
+        }
+        
+        this.updatePreview();
+        this.updateImageInfo();
+    }
+
+    // 解析颜色值为RGB
+    parseColor(color) {
+        if (color.startsWith('#')) {
+            const hex = color.slice(1);
+            return {
+                r: parseInt(hex.substr(0, 2), 16),
+                g: parseInt(hex.substr(2, 2), 16),
+                b: parseInt(hex.substr(4, 2), 16)
+            };
+        }
+        return { r: 0, g: 0, b: 0 };
+    }
+
+    // 检测并裁剪边缘
+    trimBorders(img) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const width = canvas.width;
+        const height = canvas.height;
+        const threshold = this.trimThreshold;
+        
+        // 根据模式确定目标颜色
+        let targetColor;
+        switch (this.trimMode) {
+            case 'black':
+                targetColor = { r: 0, g: 0, b: 0 };
+                break;
+            case 'white':
+                targetColor = { r: 255, g: 255, b: 255 };
+                break;
+            case 'custom':
+                targetColor = this.parseColor(this.trimColor);
+                break;
+            default:
+                targetColor = { r: 0, g: 0, b: 0 };
+        }
+        
+        // 检测像素是否为边缘颜色（包括目标颜色及其容差范围内的颜色，以及透明像素）
+        const isEdgeColor = (r, g, b, a) => {
+            // 透明像素始终视为边缘
+            if (a < 10) return true;
+            
+            // 计算与目标颜色的差异
+            const diffR = Math.abs(r - targetColor.r);
+            const diffG = Math.abs(g - targetColor.g);
+            const diffB = Math.abs(b - targetColor.b);
+            
+            // 如果所有通道的差异都在阈值范围内，则视为边缘颜色
+            return diffR <= threshold && diffG <= threshold && diffB <= threshold;
+        };
+        
+        let top = 0, bottom = height - 1, left = 0, right = width - 1;
+        
+        // 从上边扫描
+        topScan:
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    top = y;
+                    break topScan;
+                }
+            }
+        }
+        
+        // 从下边扫描
+        bottomScan:
+        for (let y = height - 1; y >= top; y--) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    bottom = y;
+                    break bottomScan;
+                }
+            }
+        }
+        
+        // 从左边扫描
+        leftScan:
+        for (let x = 0; x < width; x++) {
+            for (let y = top; y <= bottom; y++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    left = x;
+                    break leftScan;
+                }
+            }
+        }
+        
+        // 从右边扫描
+        rightScan:
+        for (let x = width - 1; x >= left; x--) {
+            for (let y = top; y <= bottom; y++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    right = x;
+                    break rightScan;
+                }
+            }
+        }
+        
+        // 计算裁剪后的尺寸
+        const trimmedWidth = right - left + 1;
+        const trimmedHeight = bottom - top + 1;
+        
+        // 如果裁剪后尺寸太小或没有变化，返回原图
+        if (trimmedWidth < 10 || trimmedHeight < 10) {
+            return img;
+        }
+        
+        // 创建裁剪后的图片
+        const trimmedCanvas = document.createElement('canvas');
+        const trimmedCtx = trimmedCanvas.getContext('2d');
+        trimmedCanvas.width = trimmedWidth;
+        trimmedCanvas.height = trimmedHeight;
+        
+        trimmedCtx.drawImage(
+            canvas,
+            left, top, trimmedWidth, trimmedHeight,
+            0, 0, trimmedWidth, trimmedHeight
+        );
+        
+        // 转换为图片对象
+        const trimmedImg = new Image();
+        trimmedImg.src = trimmedCanvas.toDataURL();
+        trimmedImg.width = trimmedWidth;
+        trimmedImg.height = trimmedHeight;
+        
+        // 保存裁剪信息用于显示
+        this.trimInfo = {
+            original: { width: img.width, height: img.height },
+            trimmed: { width: trimmedWidth, height: trimmedHeight },
+            removed: {
+                top: top,
+                bottom: height - 1 - bottom,
+                left: left,
+                right: width - 1 - right
+            }
+        };
+        
+        return trimmedImg;
+    }
+
     updatePreview() {
         if (!this.image) return;
+        
+        // 使用处理后的图片（如果有的话）
+        const displayImage = this.processedImage || this.image;
         
         // 计算画布尺寸（保持比例，适应容器）
         const maxWidth = 800;
         const maxHeight = 500;
-        let width = this.image.width;
-        let height = this.image.height;
+        let width = displayImage.width;
+        let height = displayImage.height;
         
         if (width > maxWidth) {
             height = (maxWidth / width) * height;
@@ -293,7 +514,7 @@ class ImageSplitter {
         this.previewCanvas.height = height;
         
         // 绘制图片
-        this.ctx.drawImage(this.image, 0, 0, width, height);
+        this.ctx.drawImage(displayImage, 0, 0, width, height);
         
         // 绘制分割线
         this.drawSplitLines(width, height);
@@ -340,52 +561,70 @@ class ImageSplitter {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         try {
+            // 使用处理后的图片进行分割
+            const sourceImage = this.processedImage || this.image;
+            
             let cols = this.splitMode === 'horizontal' ? 1 : this.cols;
             let rows = this.splitMode === 'vertical' ? 1 : this.rows;
             
-            const partWidth = this.image.width / cols;
-            const partHeight = this.image.height / rows;
+            const partWidth = sourceImage.width / cols;
+            const partHeight = sourceImage.height / rows;
             
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
+                    // 先创建临时画布截取分割部分
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = partWidth;
+                    tempCanvas.height = partHeight;
                     
-                    let canvasWidth = partWidth;
-                    let canvasHeight = partHeight;
+                    tempCtx.drawImage(
+                        sourceImage,
+                        col * partWidth, row * partHeight,
+                        partWidth, partHeight,
+                        0, 0,
+                        partWidth, partHeight
+                    );
+                    
+                    // 如果启用了去边缘，对每个分割部分也进行边缘裁剪
+                    let finalCanvas = tempCanvas;
+                    if (this.trimEnabled) {
+                        finalCanvas = this.trimCanvasBorders(tempCanvas);
+                    }
+                    
+                    // 创建最终输出画布（包含边框）
+                    const outputCanvas = document.createElement('canvas');
+                    const outputCtx = outputCanvas.getContext('2d');
+                    
+                    let canvasWidth = finalCanvas.width;
+                    let canvasHeight = finalCanvas.height;
                     
                     if (this.addBorder) {
                         canvasWidth += this.borderWidth * 2;
                         canvasHeight += this.borderWidth * 2;
                     }
                     
-                    canvas.width = canvasWidth;
-                    canvas.height = canvasHeight;
+                    outputCanvas.width = canvasWidth;
+                    outputCanvas.height = canvasHeight;
                     
                     // 绘制边框背景
                     if (this.addBorder) {
-                        ctx.fillStyle = this.borderColor;
-                        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                        outputCtx.fillStyle = this.borderColor;
+                        outputCtx.fillRect(0, 0, canvasWidth, canvasHeight);
                     }
                     
                     // 绘制图片部分
                     const offsetX = this.addBorder ? this.borderWidth : 0;
                     const offsetY = this.addBorder ? this.borderWidth : 0;
                     
-                    ctx.drawImage(
-                        this.image,
-                        col * partWidth, row * partHeight,
-                        partWidth, partHeight,
-                        offsetX, offsetY,
-                        partWidth, partHeight
-                    );
+                    outputCtx.drawImage(finalCanvas, offsetX, offsetY);
                     
                     // 转换为 blob
                     const mimeType = this.getMimeType();
                     const quality = this.outputFormat === 'png' ? 1 : this.quality / 100;
                     
                     const blob = await new Promise(resolve => {
-                        canvas.toBlob(resolve, mimeType, quality);
+                        outputCanvas.toBlob(resolve, mimeType, quality);
                     });
                     
                     const index = row * cols + col + 1;
@@ -393,7 +632,7 @@ class ImageSplitter {
                         blob,
                         name: `split_${row + 1}_${col + 1}.${this.outputFormat}`,
                         index,
-                        dataUrl: canvas.toDataURL(mimeType, quality)
+                        dataUrl: outputCanvas.toDataURL(mimeType, quality)
                     });
                 }
             }
@@ -405,6 +644,114 @@ class ImageSplitter {
         } finally {
             this.showLoading(false);
         }
+    }
+
+    // 对Canvas进行边缘裁剪
+    trimCanvasBorders(canvas) {
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const width = canvas.width;
+        const height = canvas.height;
+        const threshold = this.trimThreshold;
+        
+        // 根据模式确定目标颜色
+        let targetColor;
+        switch (this.trimMode) {
+            case 'black':
+                targetColor = { r: 0, g: 0, b: 0 };
+                break;
+            case 'white':
+                targetColor = { r: 255, g: 255, b: 255 };
+                break;
+            case 'custom':
+                targetColor = this.parseColor(this.trimColor);
+                break;
+            default:
+                targetColor = { r: 0, g: 0, b: 0 };
+        }
+        
+        // 检测像素是否为边缘颜色
+        const isEdgeColor = (r, g, b, a) => {
+            if (a < 10) return true;
+            const diffR = Math.abs(r - targetColor.r);
+            const diffG = Math.abs(g - targetColor.g);
+            const diffB = Math.abs(b - targetColor.b);
+            return diffR <= threshold && diffG <= threshold && diffB <= threshold;
+        };
+        
+        let top = 0, bottom = height - 1, left = 0, right = width - 1;
+        
+        // 从上边扫描
+        topScan:
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    top = y;
+                    break topScan;
+                }
+            }
+        }
+        
+        // 从下边扫描
+        bottomScan:
+        for (let y = height - 1; y >= top; y--) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    bottom = y;
+                    break bottomScan;
+                }
+            }
+        }
+        
+        // 从左边扫描
+        leftScan:
+        for (let x = 0; x < width; x++) {
+            for (let y = top; y <= bottom; y++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    left = x;
+                    break leftScan;
+                }
+            }
+        }
+        
+        // 从右边扫描
+        rightScan:
+        for (let x = width - 1; x >= left; x--) {
+            for (let y = top; y <= bottom; y++) {
+                const idx = (y * width + x) * 4;
+                if (!isEdgeColor(data[idx], data[idx + 1], data[idx + 2], data[idx + 3])) {
+                    right = x;
+                    break rightScan;
+                }
+            }
+        }
+        
+        // 计算裁剪后的尺寸
+        const trimmedWidth = right - left + 1;
+        const trimmedHeight = bottom - top + 1;
+        
+        // 如果裁剪后尺寸太小，返回原画布
+        if (trimmedWidth < 5 || trimmedHeight < 5) {
+            return canvas;
+        }
+        
+        // 创建裁剪后的画布
+        const trimmedCanvas = document.createElement('canvas');
+        const trimmedCtx = trimmedCanvas.getContext('2d');
+        trimmedCanvas.width = trimmedWidth;
+        trimmedCanvas.height = trimmedHeight;
+        
+        trimmedCtx.drawImage(
+            canvas,
+            left, top, trimmedWidth, trimmedHeight,
+            0, 0, trimmedWidth, trimmedHeight
+        );
+        
+        return trimmedCanvas;
     }
 
     getMimeType() {
