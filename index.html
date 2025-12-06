@@ -100,11 +100,23 @@
                                     </div>
                                     <span>网格分割</span>
                                 </div>
+                                <div class="mode-option" data-mode="auto">
+                                    <div class="mode-icon">
+                                        <svg viewBox="0 0 40 40" width="32" height="32">
+                                            <rect x="2" y="2" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="14" y1="2" x2="14" y2="38" stroke="currentColor" stroke-width="2" stroke-dasharray="4,2"/>
+                                            <line x1="26" y1="2" x2="26" y2="38" stroke="currentColor" stroke-width="2" stroke-dasharray="4,2"/>
+                                            <line x1="2" y1="20" x2="38" y2="20" stroke="currentColor" stroke-width="2" stroke-dasharray="4,2"/>
+                                            <circle cx="20" cy="20" r="4" fill="currentColor"/>
+                                        </svg>
+                                    </div>
+                                    <span>智能定位</span>
+                                </div>
                             </div>
                         </div>
 
                         <!-- 分割参数 -->
-                        <div class="option-group">
+                        <div class="option-group" id="splitParamsGroup">
                             <label class="option-label">分割参数</label>
                             
                             <div class="slider-group" id="colsGroup">
@@ -128,6 +140,54 @@
                                 <strong id="totalParts">9</strong>
                                 <span> 个部分</span>
                             </div>
+                        </div>
+
+                        <!-- 智能定位参数 -->
+                        <div class="option-group" id="autoDetectGroup" style="display: none;">
+                            <label class="option-label">智能定位参数</label>
+                            <div class="auto-detect-info">
+                                <p class="auto-detect-hint">🔍 自动检测图片中的边框线位置进行分割</p>
+                            </div>
+                            <div class="trim-mode-group">
+                                <span class="trim-mode-label">检测颜色</span>
+                                <div class="trim-mode-selector">
+                                    <label class="trim-mode-option">
+                                        <input type="radio" name="autoDetectColor" value="black" checked>
+                                        <span class="trim-mode-btn">⬛ 黑边</span>
+                                    </label>
+                                    <label class="trim-mode-option">
+                                        <input type="radio" name="autoDetectColor" value="white">
+                                        <span class="trim-mode-btn">⬜ 白边</span>
+                                    </label>
+                                    <label class="trim-mode-option">
+                                        <input type="radio" name="autoDetectColor" value="custom">
+                                        <span class="trim-mode-btn">🎨 自定义</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="custom-color-group" id="autoDetectCustomColorGroup" style="display: none;">
+                                <span>边框颜色</span>
+                                <input type="color" id="autoDetectColor" value="#000000">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <span>检测阈值</span>
+                                    <span class="slider-value" id="autoDetectThresholdValue">30</span>
+                                </div>
+                                <input type="range" id="autoDetectThreshold" min="0" max="100" value="30" class="slider">
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-header">
+                                    <span>最小边框宽度</span>
+                                    <span class="slider-value" id="autoDetectMinWidthValue">3px</span>
+                                </div>
+                                <input type="range" id="autoDetectMinWidth" min="1" max="20" value="3" class="slider">
+                            </div>
+                            <div class="auto-detect-result" id="autoDetectResult">
+                                <span>检测结果: </span>
+                                <strong id="detectedParts">-</strong>
+                            </div>
+                            <button class="btn btn-small" id="redetectBtn">🔄 重新检测</button>
                         </div>
 
                         <!-- 去边设置 -->
