@@ -16,7 +16,7 @@ class ImageSplitter {
         this.splitImages = [];
         this.trimEnabled = false;
         this.trimThreshold = 30;
-        this.trimMode = 'black'; // black, white, custom
+        this.trimMode = 'both'; // black, white, both, custom
         this.trimColor = '#000000';
 
         this.initElements();
@@ -380,19 +380,26 @@ class ImageSplitter {
         const threshold = this.trimThreshold;
         
         // 根据模式确定目标颜色
-        let targetColor;
+        let targetColors = [];
         switch (this.trimMode) {
             case 'black':
-                targetColor = { r: 0, g: 0, b: 0 };
+                targetColors = [{ r: 0, g: 0, b: 0 }];
                 break;
             case 'white':
-                targetColor = { r: 255, g: 255, b: 255 };
+                targetColors = [{ r: 255, g: 255, b: 255 }];
+                break;
+            case 'both':
+                // 同时检测黑边和白边
+                targetColors = [
+                    { r: 0, g: 0, b: 0 },      // 黑色
+                    { r: 255, g: 255, b: 255 }  // 白色
+                ];
                 break;
             case 'custom':
-                targetColor = this.parseColor(this.trimColor);
+                targetColors = [this.parseColor(this.trimColor)];
                 break;
             default:
-                targetColor = { r: 0, g: 0, b: 0 };
+                targetColors = [{ r: 0, g: 0, b: 0 }];
         }
         
         // 检测像素是否为边缘颜色（包括目标颜色及其容差范围内的颜色，以及透明像素）
@@ -400,13 +407,18 @@ class ImageSplitter {
             // 透明像素始终视为边缘
             if (a < 10) return true;
             
-            // 计算与目标颜色的差异
-            const diffR = Math.abs(r - targetColor.r);
-            const diffG = Math.abs(g - targetColor.g);
-            const diffB = Math.abs(b - targetColor.b);
-            
-            // 如果所有通道的差异都在阈值范围内，则视为边缘颜色
-            return diffR <= threshold && diffG <= threshold && diffB <= threshold;
+            // 检查是否匹配任意一个目标颜色
+            for (const targetColor of targetColors) {
+                const diffR = Math.abs(r - targetColor.r);
+                const diffG = Math.abs(g - targetColor.g);
+                const diffB = Math.abs(b - targetColor.b);
+                
+                // 如果所有通道的差异都在阈值范围内，则视为边缘颜色
+                if (diffR <= threshold && diffG <= threshold && diffB <= threshold) {
+                    return true;
+                }
+            }
+            return false;
         };
         
         let top = 0, bottom = height - 1, left = 0, right = width - 1;
@@ -684,28 +696,39 @@ class ImageSplitter {
         const threshold = this.trimThreshold;
         
         // 根据模式确定目标颜色
-        let targetColor;
+        let targetColors = [];
         switch (this.trimMode) {
             case 'black':
-                targetColor = { r: 0, g: 0, b: 0 };
+                targetColors = [{ r: 0, g: 0, b: 0 }];
                 break;
             case 'white':
-                targetColor = { r: 255, g: 255, b: 255 };
+                targetColors = [{ r: 255, g: 255, b: 255 }];
+                break;
+            case 'both':
+                targetColors = [
+                    { r: 0, g: 0, b: 0 },
+                    { r: 255, g: 255, b: 255 }
+                ];
                 break;
             case 'custom':
-                targetColor = this.parseColor(this.trimColor);
+                targetColors = [this.parseColor(this.trimColor)];
                 break;
             default:
-                targetColor = { r: 0, g: 0, b: 0 };
+                targetColors = [{ r: 0, g: 0, b: 0 }];
         }
         
         // 检测像素是否为边缘颜色
         const isEdgeColor = (r, g, b, a) => {
             if (a < 10) return true;
-            const diffR = Math.abs(r - targetColor.r);
-            const diffG = Math.abs(g - targetColor.g);
-            const diffB = Math.abs(b - targetColor.b);
-            return diffR <= threshold && diffG <= threshold && diffB <= threshold;
+            for (const targetColor of targetColors) {
+                const diffR = Math.abs(r - targetColor.r);
+                const diffG = Math.abs(g - targetColor.g);
+                const diffB = Math.abs(b - targetColor.b);
+                if (diffR <= threshold && diffG <= threshold && diffB <= threshold) {
+                    return true;
+                }
+            }
+            return false;
         };
         
         let top = 0, bottom = height - 1, left = 0, right = width - 1;

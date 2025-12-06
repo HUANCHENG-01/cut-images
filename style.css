@@ -387,11 +387,13 @@ header h1 {
 
 .trim-mode-selector {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
 .trim-mode-option {
     flex: 1;
+    min-width: 70px;
 }
 
 .trim-mode-option input {
@@ -400,14 +402,15 @@ header h1 {
 
 .trim-mode-btn {
     display: block;
-    padding: 10px 8px;
+    padding: 8px 6px;
     text-align: center;
     background: var(--surface-color);
     border: 2px solid transparent;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .trim-mode-btn:hover {
