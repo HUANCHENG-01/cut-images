@@ -4,6 +4,7 @@ class ImageSplitter {
         this.image = null;
         this.imageFile = null;
         this.processedImage = null; // 处理后的图片（去边后）
+        this.processedCanvas = null; // 处理后的Canvas（用于分割）
         this.splitMode = 'grid'; // horizontal, vertical, grid
         this.cols = 3;
         this.rows = 3;
@@ -292,10 +293,18 @@ class ImageSplitter {
     updateImageInfo() {
         if (!this.image) return;
         
-        const displayImage = this.processedImage || this.image;
+        // 获取显示尺寸（Canvas用width属性，Image也用width）
+        let displayWidth, displayHeight;
+        if (this.processedCanvas) {
+            displayWidth = this.processedCanvas.width;
+            displayHeight = this.processedCanvas.height;
+        } else {
+            displayWidth = this.image.width;
+            displayHeight = this.image.height;
+        }
         
         if (this.trimEnabled && this.trimInfo) {
-            this.originalSizeEl.textContent = `${displayImage.width} × ${displayImage.height}px (原: ${this.image.width} × ${this.image.height})`;
+            this.originalSizeEl.textContent = `${displayWidth} × ${displayHeight}px (原: ${this.image.width} × ${this.image.height})`;
         } else {
             this.originalSizeEl.textContent = `${this.image.width} × ${this.image.height}px`;
         }
@@ -331,8 +340,11 @@ class ImageSplitter {
         if (!this.image) return;
         
         if (this.trimEnabled) {
-            this.processedImage = this.trimBorders(this.image);
+            const result = this.trimBorders(this.image);
+            this.processedCanvas = result.canvas;
+            this.processedImage = result.canvas; // Canvas可以直接用于drawImage
         } else {
+            this.processedCanvas = null;
             this.processedImage = this.image;
         }
         
@@ -453,10 +465,16 @@ class ImageSplitter {
         
         // 如果裁剪后尺寸太小或没有变化，返回原图
         if (trimmedWidth < 10 || trimmedHeight < 10) {
-            return img;
+            // 返回原图的Canvas
+            const originalCanvas = document.createElement('canvas');
+            const originalCtx = originalCanvas.getContext('2d');
+            originalCanvas.width = img.width;
+            originalCanvas.height = img.height;
+            originalCtx.drawImage(img, 0, 0);
+            return { canvas: originalCanvas, width: img.width, height: img.height };
         }
         
-        // 创建裁剪后的图片
+        // 创建裁剪后的Canvas
         const trimmedCanvas = document.createElement('canvas');
         const trimmedCtx = trimmedCanvas.getContext('2d');
         trimmedCanvas.width = trimmedWidth;
@@ -467,12 +485,6 @@ class ImageSplitter {
             left, top, trimmedWidth, trimmedHeight,
             0, 0, trimmedWidth, trimmedHeight
         );
-        
-        // 转换为图片对象
-        const trimmedImg = new Image();
-        trimmedImg.src = trimmedCanvas.toDataURL();
-        trimmedImg.width = trimmedWidth;
-        trimmedImg.height = trimmedHeight;
         
         // 保存裁剪信息用于显示
         this.trimInfo = {
@@ -486,7 +498,7 @@ class ImageSplitter {
             }
         };
         
-        return trimmedImg;
+        return { canvas: trimmedCanvas, width: trimmedWidth, height: trimmedHeight };
     }
 
     updatePreview() {
@@ -561,29 +573,38 @@ class ImageSplitter {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         try {
-            // 使用处理后的图片进行分割
-            const sourceImage = this.processedImage || this.image;
+            // 使用处理后的Canvas或原图进行分割
+            const sourceImage = this.processedCanvas || this.image;
+            const sourceWidth = this.processedCanvas ? this.processedCanvas.width : this.image.width;
+            const sourceHeight = this.processedCanvas ? this.processedCanvas.height : this.image.height;
             
             let cols = this.splitMode === 'horizontal' ? 1 : this.cols;
             let rows = this.splitMode === 'vertical' ? 1 : this.rows;
             
-            const partWidth = sourceImage.width / cols;
-            const partHeight = sourceImage.height / rows;
+            // 使用Math.floor确保整数像素，避免黑边
+            const partWidth = Math.floor(sourceWidth / cols);
+            const partHeight = Math.floor(sourceHeight / rows);
             
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
+                    // 计算实际的宽高（最后一列/行可能需要多取一些像素）
+                    const isLastCol = col === cols - 1;
+                    const isLastRow = row === rows - 1;
+                    const actualWidth = isLastCol ? sourceWidth - col * partWidth : partWidth;
+                    const actualHeight = isLastRow ? sourceHeight - row * partHeight : partHeight;
+                    
                     // 先创建临时画布截取分割部分
                     const tempCanvas = document.createElement('canvas');
                     const tempCtx = tempCanvas.getContext('2d');
-                    tempCanvas.width = partWidth;
-                    tempCanvas.height = partHeight;
+                    tempCanvas.width = actualWidth;
+                    tempCanvas.height = actualHeight;
                     
                     tempCtx.drawImage(
                         sourceImage,
                         col * partWidth, row * partHeight,
-                        partWidth, partHeight,
+                        actualWidth, actualHeight,
                         0, 0,
-                        partWidth, partHeight
+                        actualWidth, actualHeight
                     );
                     
                     // 如果启用了去边缘，对每个分割部分也进行边缘裁剪
@@ -816,6 +837,9 @@ class ImageSplitter {
     reset() {
         this.image = null;
         this.imageFile = null;
+        this.processedImage = null;
+        this.processedCanvas = null;
+        this.trimInfo = null;
         this.splitImages = [];
         this.fileInput.value = '';
         
