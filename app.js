@@ -470,6 +470,9 @@ class ImageSplitter {
             const originalCtx = originalCanvas.getContext('2d');
             originalCanvas.width = img.width;
             originalCanvas.height = img.height;
+            // 填充白色背景
+            originalCtx.fillStyle = '#FFFFFF';
+            originalCtx.fillRect(0, 0, img.width, img.height);
             originalCtx.drawImage(img, 0, 0);
             return { canvas: originalCanvas, width: img.width, height: img.height };
         }
@@ -479,6 +482,10 @@ class ImageSplitter {
         const trimmedCtx = trimmedCanvas.getContext('2d');
         trimmedCanvas.width = trimmedWidth;
         trimmedCanvas.height = trimmedHeight;
+        
+        // 先填充白色背景，避免透明区域显示为黑色
+        trimmedCtx.fillStyle = '#FFFFFF';
+        trimmedCtx.fillRect(0, 0, trimmedWidth, trimmedHeight);
         
         trimmedCtx.drawImage(
             canvas,
@@ -765,6 +772,10 @@ class ImageSplitter {
         const trimmedCtx = trimmedCanvas.getContext('2d');
         trimmedCanvas.width = trimmedWidth;
         trimmedCanvas.height = trimmedHeight;
+        
+        // 先填充白色背景，避免透明区域显示为黑色
+        trimmedCtx.fillStyle = '#FFFFFF';
+        trimmedCtx.fillRect(0, 0, trimmedWidth, trimmedHeight);
         
         trimmedCtx.drawImage(
             canvas,
