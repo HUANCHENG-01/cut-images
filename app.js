@@ -16,6 +16,7 @@ class ImageSplitter {
         this.splitImages = [];
         this.trimEnabled = false;
         this.trimThreshold = 30;
+        this.trimPadding = 2; // 额外裁剪像素
         this.trimMode = 'both'; // black, white, both, custom
         this.trimColor = '#000000';
 
@@ -60,6 +61,8 @@ class ImageSplitter {
         this.trimOptions = document.getElementById('trimOptions');
         this.trimThresholdSlider = document.getElementById('trimThreshold');
         this.trimThresholdValue = document.getElementById('trimThresholdValue');
+        this.trimPaddingSlider = document.getElementById('trimPadding');
+        this.trimPaddingValue = document.getElementById('trimPaddingValue');
         this.trimModeRadios = document.querySelectorAll('input[name="trimMode"]');
         this.customColorGroup = document.getElementById('customColorGroup');
         this.trimColorInput = document.getElementById('trimColor');
@@ -149,6 +152,14 @@ class ImageSplitter {
         this.trimThresholdSlider.addEventListener('input', (e) => {
             this.trimThreshold = parseInt(e.target.value);
             this.trimThresholdValue.textContent = this.trimThreshold;
+            if (this.trimEnabled) {
+                this.processImage();
+            }
+        });
+        
+        this.trimPaddingSlider.addEventListener('input', (e) => {
+            this.trimPadding = parseInt(e.target.value);
+            this.trimPaddingValue.textContent = this.trimPadding + 'px';
             if (this.trimEnabled) {
                 this.processImage();
             }
@@ -471,6 +482,13 @@ class ImageSplitter {
             }
         }
         
+        // 应用额外裁剪（去除残留边框线）
+        const padding = this.trimPadding;
+        top = Math.min(top + padding, height - 1);
+        bottom = Math.max(bottom - padding, top);
+        left = Math.min(left + padding, width - 1);
+        right = Math.max(right - padding, left);
+        
         // 计算裁剪后的尺寸
         const trimmedWidth = right - left + 1;
         const trimmedHeight = bottom - top + 1;
@@ -780,6 +798,13 @@ class ImageSplitter {
                 }
             }
         }
+        
+        // 应用额外裁剪（去除残留边框线）
+        const padding = this.trimPadding;
+        top = Math.min(top + padding, height - 1);
+        bottom = Math.max(bottom - padding, top);
+        left = Math.min(left + padding, width - 1);
+        right = Math.max(right - padding, left);
         
         // 计算裁剪后的尺寸
         const trimmedWidth = right - left + 1;

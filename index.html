@@ -173,7 +173,14 @@
                                     </div>
                                     <input type="range" id="trimThreshold" min="0" max="100" value="30" class="slider">
                                 </div>
-                                <p class="option-hint">阈值越高，去除的边缘颜色范围越大（容差更大）</p>
+                                <div class="slider-group">
+                                    <div class="slider-header">
+                                        <span>额外裁剪</span>
+                                        <span class="slider-value" id="trimPaddingValue">2px</span>
+                                    </div>
+                                    <input type="range" id="trimPadding" min="0" max="20" value="2" class="slider">
+                                </div>
+                                <p class="option-hint">额外裁剪可去除残留的边框线</p>
                             </div>
                         </div>
 
